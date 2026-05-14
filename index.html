@@ -1,0 +1,1752 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="theme-color" content="#5D4037"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-title" content="BiblioQuiz"/>
+<link rel="manifest" href="manifest.json"/>
+<title>BiblioQuiz — O Jogo da Biblioteconomia</title>
+<style>
+/* ===== RESET & BASE ===== */
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --marrom-escuro:#3E2723;
+  --marrom-medio:#5D4037;
+  --marrom-claro:#8D6E63;
+  --bege:#F5F0E8;
+  --bege-escuro:#E8DCC8;
+  --ouro:#C9A84C;
+  --ouro-escuro:#A0782E;
+  --creme:#FFF8E7;
+  --pergaminho:#F4ECD8;
+  --tinta:#2C1810;
+  --sombra:rgba(62,39,35,0.4);
+  --font-titulo:'Georgia',serif;
+  --font-texto:'Palatino Linotype','Book Antiqua','Palatino',serif;
+  --transition:0.6s cubic-bezier(0.645,0.045,0.355,1.0);
+}
+html{height:100%;overflow:hidden;}
+body{
+  height:100%;
+  background:var(--marrom-escuro);
+  font-family:var(--font-texto);
+  color:var(--tinta);
+  overflow:hidden;
+  user-select:none;
+  background-image:
+    radial-gradient(ellipse at 20% 50%,rgba(93,64,55,0.3) 0%,transparent 60%),
+    radial-gradient(ellipse at 80% 20%,rgba(141,110,99,0.2) 0%,transparent 50%);
+}
+
+/* ===== LIVRO PRINCIPAL ===== */
+#app{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  perspective:1500px;
+}
+#livro{
+  position:relative;
+  width:min(820px,97vw);
+  height:min(600px,96vh);
+  transform-style:preserve-3d;
+  filter:drop-shadow(0 30px 60px rgba(0,0,0,0.7)) drop-shadow(0 0 2px var(--ouro));
+}
+
+/* ===== LOMBADA DO LIVRO ===== */
+#lombada{
+  position:absolute;
+  left:-28px;
+  top:6px;
+  width:28px;
+  height:calc(100% - 12px);
+  background:linear-gradient(180deg,#2C1810 0%,var(--marrom-escuro) 30%,#4A2E1A 60%,#2C1810 100%);
+  border-radius:4px 0 0 4px;
+  box-shadow:-3px 0 8px rgba(0,0,0,0.5),inset 2px 0 4px rgba(255,200,100,0.1);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  writing-mode:vertical-rl;
+  transform:rotate(180deg);
+  font-family:var(--font-titulo);
+  font-size:11px;
+  color:var(--ouro);
+  letter-spacing:3px;
+  text-transform:uppercase;
+  font-weight:bold;
+  text-shadow:0 0 8px rgba(201,168,76,0.5);
+}
+
+/* ===== PÁGINAS ===== */
+.pagina{
+  position:absolute;
+  inset:0;
+  border-radius:2px 8px 8px 2px;
+  overflow:hidden;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 0.15s;
+  background:var(--pergaminho);
+  background-image:
+    linear-gradient(90deg,rgba(0,0,0,0.06) 0%,transparent 4%),
+    repeating-linear-gradient(0deg,transparent,transparent 28px,rgba(139,110,80,0.08) 28px,rgba(139,110,80,0.08) 29px);
+  border:1px solid rgba(139,110,80,0.3);
+  box-shadow:inset -4px 0 12px rgba(0,0,0,0.08),2px 0 8px rgba(0,0,0,0.15);
+}
+.pagina.ativa{
+  opacity:1;
+  pointer-events:all;
+  z-index:10;
+}
+
+/* ===== EFEITO VIRADA ===== */
+.pagina.saindo{
+  animation:virarSaindo var(--transition) forwards;
+  z-index:20;
+  pointer-events:none;
+}
+.pagina.entrando{
+  animation:virarEntrando var(--transition) forwards;
+  z-index:15;
+}
+@keyframes virarSaindo{
+  0%{transform:perspective(1200px) rotateY(0deg);opacity:1;transform-origin:left center;}
+  50%{transform:perspective(1200px) rotateY(-90deg);opacity:0.3;transform-origin:left center;}
+  100%{transform:perspective(1200px) rotateY(-180deg);opacity:0;transform-origin:left center;}
+}
+@keyframes virarEntrando{
+  0%{transform:perspective(1200px) rotateY(180deg);opacity:0;transform-origin:left center;}
+  50%{transform:perspective(1200px) rotateY(90deg);opacity:0.3;transform-origin:left center;}
+  100%{transform:perspective(1200px) rotateY(0deg);opacity:1;transform-origin:left center;}
+}
+
+/* ===== NÚMERO DE PÁGINA ===== */
+.num-pagina{
+  position:absolute;
+  bottom:14px;
+  font-size:11px;
+  color:var(--marrom-claro);
+  font-style:italic;
+  font-family:var(--font-titulo);
+}
+.num-pagina.esq{left:22px;}
+.num-pagina.dir{right:22px;}
+
+/* ===== ORNAMENTOS ===== */
+.ornamento{
+  text-align:center;
+  color:var(--ouro-escuro);
+  font-size:20px;
+  margin:6px 0;
+  letter-spacing:4px;
+  opacity:0.7;
+}
+.divisor{
+  border:none;
+  height:1px;
+  background:linear-gradient(90deg,transparent,var(--ouro),transparent);
+  margin:10px 20px;
+  opacity:0.6;
+}
+
+/* ===== CAPA ===== */
+#pg-capa{
+  background:linear-gradient(160deg,#1A0A04 0%,#3E2010 25%,#2C1508 60%,#1A0A04 100%);
+  color:var(--ouro);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:30px;
+  position:relative;
+  overflow:hidden;
+}
+#pg-capa::before{
+  content:'';
+  position:absolute;
+  inset:12px;
+  border:2px solid var(--ouro);
+  border-radius:4px;
+  opacity:0.5;
+  box-shadow:0 0 20px rgba(201,168,76,0.15),inset 0 0 20px rgba(201,168,76,0.05);
+}
+#pg-capa::after{
+  content:'';
+  position:absolute;
+  inset:20px;
+  border:1px solid var(--ouro);
+  border-radius:2px;
+  opacity:0.25;
+}
+.capa-emblema{font-size:clamp(40px,10vw,80px);margin-bottom:12px;filter:drop-shadow(0 0 15px rgba(201,168,76,0.5));animation:flutuar 3s ease-in-out infinite;}
+@keyframes flutuar{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+.capa-titulo{
+  font-family:var(--font-titulo);
+  font-size:clamp(24px,6vw,48px);
+  font-weight:bold;
+  text-shadow:0 0 20px rgba(201,168,76,0.6),0 2px 4px rgba(0,0,0,0.5);
+  letter-spacing:3px;
+  line-height:1.2;
+  margin:8px 0;
+}
+.capa-subtitulo{
+  font-size:clamp(10px,2.5vw,15px);
+  color:rgba(201,168,76,0.7);
+  letter-spacing:4px;
+  text-transform:uppercase;
+  margin:6px 0 20px;
+}
+.capa-autor{
+  font-size:clamp(9px,2vw,12px);
+  color:rgba(201,168,76,0.5);
+  letter-spacing:2px;
+  margin-top:auto;
+}
+.btn-capa{
+  background:linear-gradient(135deg,var(--ouro-escuro),var(--ouro));
+  color:var(--marrom-escuro);
+  border:none;
+  padding:12px 28px;
+  border-radius:30px;
+  font-family:var(--font-titulo);
+  font-size:clamp(12px,3vw,16px);
+  font-weight:bold;
+  cursor:pointer;
+  margin:14px 6px;
+  letter-spacing:1px;
+  box-shadow:0 4px 15px rgba(0,0,0,0.4),0 0 10px rgba(201,168,76,0.3);
+  transition:transform 0.2s,box-shadow 0.2s;
+}
+.btn-capa:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 6px 20px rgba(0,0,0,0.5),0 0 15px rgba(201,168,76,0.5);}
+.btn-capa:active{transform:translateY(0) scale(0.98);}
+.capa-btns{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:12px 0;}
+
+/* ===== PÁGINA GENÉRICA ===== */
+.pg-scroll{
+  height:100%;
+  overflow-y:auto;
+  padding:24px 28px;
+  scrollbar-width:thin;
+  scrollbar-color:var(--ouro-escuro) transparent;
+}
+.pg-scroll::-webkit-scrollbar{width:4px;}
+.pg-scroll::-webkit-scrollbar-thumb{background:var(--ouro-escuro);border-radius:2px;}
+.pg-titulo{
+  font-family:var(--font-titulo);
+  font-size:clamp(16px,4vw,26px);
+  color:var(--marrom-escuro);
+  text-align:center;
+  margin:4px 0 8px;
+  text-shadow:1px 1px 0 rgba(255,255,255,0.5);
+}
+.pg-subtitulo{
+  font-size:12px;
+  color:var(--marrom-claro);
+  text-align:center;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  margin-bottom:10px;
+}
+
+/* ===== PERFIL ===== */
+.perfil-avatar{
+  width:80px;height:80px;
+  border-radius:50%;
+  background:linear-gradient(135deg,var(--marrom-medio),var(--marrom-escuro));
+  display:flex;align-items:center;justify-content:center;
+  font-size:36px;
+  margin:0 auto 12px;
+  border:3px solid var(--ouro);
+  box-shadow:0 4px 15px rgba(0,0,0,0.3);
+}
+.perfil-nome{font-family:var(--font-titulo);font-size:18px;font-weight:bold;color:var(--marrom-escuro);text-align:center;margin:6px 0;}
+.perfil-badge{display:inline-block;background:var(--ouro);color:var(--marrom-escuro);padding:3px 12px;border-radius:20px;font-size:11px;font-weight:bold;letter-spacing:1px;margin:4px;}
+.perfil-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0;}
+.stat-box{background:rgba(93,64,55,0.1);border:1px solid rgba(201,168,76,0.3);border-radius:8px;padding:10px;text-align:center;}
+.stat-num{font-family:var(--font-titulo);font-size:22px;font-weight:bold;color:var(--marrom-escuro);}
+.stat-label{font-size:9px;color:var(--marrom-claro);text-transform:uppercase;letter-spacing:1px;}
+.perfil-input{width:100%;padding:8px 12px;border:1px solid rgba(139,110,99,0.4);border-radius:6px;background:rgba(255,255,255,0.5);font-family:var(--font-texto);font-size:13px;color:var(--tinta);margin:4px 0;}
+.perfil-btn{background:var(--marrom-medio);color:var(--bege);border:none;padding:8px 20px;border-radius:20px;font-family:var(--font-titulo);font-size:12px;cursor:pointer;margin:4px;transition:background 0.2s;}
+.perfil-btn:hover{background:var(--marrom-escuro);}
+
+/* ===== SELEÇÃO DE NÍVEL/DIFICULDADE ===== */
+.nivel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0;}
+.nivel-card{
+  background:rgba(255,255,255,0.4);
+  border:2px solid transparent;
+  border-radius:10px;
+  padding:14px 8px;
+  text-align:center;
+  cursor:pointer;
+  transition:all 0.2s;
+  position:relative;
+  overflow:hidden;
+}
+.nivel-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.2);}
+.nivel-card.ativo{border-color:var(--ouro);background:rgba(201,168,76,0.15);box-shadow:0 0 10px rgba(201,168,76,0.3);}
+.nivel-emoji{font-size:24px;margin-bottom:6px;}
+.nivel-nome{font-family:var(--font-titulo);font-size:13px;font-weight:bold;color:var(--marrom-escuro);}
+.nivel-desc{font-size:10px;color:var(--marrom-claro);margin-top:3px;}
+.dif-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0;}
+.dif-btn{
+  padding:10px 6px;
+  border:2px solid rgba(139,110,80,0.3);
+  border-radius:8px;
+  background:transparent;
+  cursor:pointer;
+  font-family:var(--font-titulo);
+  font-size:12px;
+  color:var(--marrom-escuro);
+  transition:all 0.2s;
+  text-align:center;
+}
+.dif-btn:hover{background:rgba(93,64,55,0.1);border-color:var(--ouro-escuro);}
+.dif-btn.ativo{background:var(--marrom-medio);color:var(--bege);border-color:var(--marrom-escuro);}
+.jogadores-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0;}
+.jog-btn{
+  padding:10px;
+  border:2px solid rgba(139,110,80,0.3);
+  border-radius:8px;
+  background:transparent;
+  cursor:pointer;
+  font-family:var(--font-titulo);
+  font-size:13px;
+  color:var(--marrom-escuro);
+  transition:all 0.2s;
+  text-align:center;
+}
+.jog-btn:hover{background:rgba(93,64,55,0.1);}
+.jog-btn.ativo{background:var(--marrom-medio);color:var(--bege);}
+.btn-iniciar{
+  display:block;
+  width:100%;
+  max-width:280px;
+  margin:16px auto 0;
+  background:linear-gradient(135deg,var(--marrom-escuro),var(--marrom-medio));
+  color:var(--ouro);
+  border:2px solid var(--ouro);
+  padding:12px 20px;
+  border-radius:30px;
+  font-family:var(--font-titulo);
+  font-size:15px;
+  font-weight:bold;
+  cursor:pointer;
+  letter-spacing:1px;
+  transition:all 0.2s;
+  box-shadow:0 4px 12px rgba(0,0,0,0.3);
+}
+.btn-iniciar:hover{background:linear-gradient(135deg,var(--marrom-medio),var(--ouro-escuro));transform:scale(1.02);}
+
+/* ===== TABULEIRO ===== */
+#pg-tabuleiro{background:var(--bege);position:relative;}
+.tab-topo{display:flex;justify-content:space-between;align-items:center;padding:10px 16px 6px;background:linear-gradient(180deg,var(--bege-escuro),var(--bege));border-bottom:1px solid rgba(139,110,80,0.25);}
+.tab-jogadores{display:flex;gap:8px;flex-wrap:wrap;}
+.jog-indicador{
+  padding:5px 10px;
+  border-radius:20px;
+  font-family:var(--font-titulo);
+  font-size:11px;
+  font-weight:bold;
+  border:2px solid transparent;
+  transition:all 0.3s;
+  min-width:70px;
+  text-align:center;
+}
+.jog-indicador.atual{transform:scale(1.08);box-shadow:0 0 8px rgba(0,0,0,0.3);}
+.tab-info{font-family:var(--font-titulo);font-size:11px;color:var(--marrom-claro);text-align:right;}
+.tab-grid-wrapper{overflow:auto;flex:1;padding:8px 12px;}
+.tab-grid{
+  display:grid;
+  grid-template-columns:repeat(8,1fr);
+  gap:5px;
+  min-width:420px;
+}
+.casa{
+  aspect-ratio:1;
+  border-radius:8px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  border:2px solid rgba(255,255,255,0.3);
+  position:relative;
+  transition:transform 0.2s,box-shadow 0.2s;
+  font-size:8px;
+  text-align:center;
+  padding:3px;
+  min-height:52px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.15);
+}
+.casa:hover{transform:scale(1.05);box-shadow:0 4px 12px rgba(0,0,0,0.25);}
+.casa-emoji{font-size:16px;margin-bottom:2px;}
+.casa-label{font-family:var(--font-titulo);font-size:7px;color:rgba(255,255,255,0.85);text-transform:uppercase;letter-spacing:0.5px;line-height:1.2;}
+.casa-num{position:absolute;top:3px;right:5px;font-size:8px;color:rgba(255,255,255,0.6);font-family:var(--font-titulo);}
+.piao{
+  position:absolute;
+  font-size:14px;
+  bottom:2px;
+  left:50%;
+  transform:translateX(-50%);
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+  animation:pulsarPiao 1.5s ease-in-out infinite;
+}
+@keyframes pulsarPiao{0%,100%{transform:translateX(-50%) scale(1);}50%{transform:translateX(-50%) scale(1.2);}}
+.casa.surpresa{animation:brilharSurpresa 2s ease-in-out infinite;}
+@keyframes brilharSurpresa{0%,100%{box-shadow:0 2px 6px rgba(0,0,0,0.15);}50%{box-shadow:0 0 15px rgba(255,255,255,0.4),0 2px 6px rgba(0,0,0,0.15);}}
+.dado-area{display:flex;align-items:center;justify-content:center;gap:10px;padding:8px 12px;background:rgba(62,39,35,0.06);border-top:1px solid rgba(139,110,80,0.2);}
+.dado{
+  width:46px;height:46px;
+  background:var(--creme);
+  border:2px solid var(--marrom-claro);
+  border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;
+  cursor:pointer;
+  box-shadow:2px 2px 6px rgba(0,0,0,0.2),inset 0 1px 2px rgba(255,255,255,0.5);
+  transition:transform 0.2s;
+  user-select:none;
+}
+.dado:hover{transform:scale(1.08);}
+.dado.rolando{animation:rolarDado 0.5s ease-in-out;}
+@keyframes rolarDado{0%{transform:rotate(0deg) scale(1);}25%{transform:rotate(-15deg) scale(1.1);}50%{transform:rotate(15deg) scale(1.15);}75%{transform:rotate(-10deg) scale(1.1);}100%{transform:rotate(0deg) scale(1);}}
+.btn-rolar{
+  background:linear-gradient(135deg,var(--marrom-escuro),var(--marrom-medio));
+  color:var(--ouro);
+  border:2px solid var(--ouro);
+  padding:10px 18px;
+  border-radius:25px;
+  font-family:var(--font-titulo);
+  font-size:13px;
+  font-weight:bold;
+  cursor:pointer;
+  letter-spacing:1px;
+  transition:all 0.2s;
+}
+.btn-rolar:hover{background:var(--marrom-medio);}
+.btn-rolar:disabled{opacity:0.5;cursor:not-allowed;}
+.progresso-info{font-family:var(--font-titulo);font-size:10px;color:var(--marrom-claro);text-align:center;}
+.acertos-streak{display:flex;gap:4px;align-items:center;justify-content:center;padding:4px 12px;flex-wrap:wrap;}
+.streak-dot{width:10px;height:10px;border-radius:50%;background:rgba(139,110,80,0.2);border:1px solid rgba(139,110,80,0.4);transition:all 0.3s;}
+.streak-dot.certo{background:var(--ouro);border-color:var(--ouro-escuro);}
+
+/* ===== MODAL CARTA ===== */
+#modal-carta{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:1000;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,0.7);
+  backdrop-filter:blur(4px);
+  padding:12px;
+}
+#modal-carta.aberto{display:flex;}
+.carta-container{
+  perspective:1000px;
+  width:min(420px,90vw);
+  height:min(560px,88vh);
+  cursor:pointer;
+}
+.carta{
+  width:100%;
+  height:100%;
+  transform-style:preserve-3d;
+  transition:transform 0.7s cubic-bezier(0.645,0.045,0.355,1);
+  position:relative;
+}
+.carta.virada{transform:rotateY(180deg);}
+.carta-face{
+  position:absolute;
+  inset:0;
+  backface-visibility:hidden;
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,0.5),0 0 0 2px rgba(255,255,255,0.1);
+}
+.carta-frente{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  text-align:center;
+}
+.carta-frente::before{
+  content:'';
+  position:absolute;
+  inset:8px;
+  border:2px solid rgba(255,255,255,0.3);
+  border-radius:10px;
+  pointer-events:none;
+}
+.carta-emblema{font-size:50px;margin-bottom:12px;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.3));}
+.carta-cat-label{
+  font-family:var(--font-titulo);
+  font-size:20px;
+  font-weight:bold;
+  color:#fff;
+  text-shadow:0 2px 8px rgba(0,0,0,0.5);
+  margin:6px 0;
+}
+.carta-cat-desc{font-size:12px;color:rgba(255,255,255,0.75);letter-spacing:1px;margin-bottom:16px;}
+.carta-nivel-badge{
+  background:rgba(0,0,0,0.3);
+  color:rgba(255,255,255,0.9);
+  padding:4px 12px;
+  border-radius:20px;
+  font-size:11px;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  margin-bottom:8px;
+}
+.carta-hint{font-size:11px;color:rgba(255,255,255,0.6);margin-top:12px;animation:piscar 2s ease-in-out infinite;}
+@keyframes piscar{0%,100%{opacity:0.6;}50%{opacity:1;}}
+
+/* Verso da carta */
+.carta-verso{
+  background:var(--pergaminho);
+  background-image:linear-gradient(160deg,#FFF8E7 0%,#F0E6C8 100%);
+  transform:rotateY(180deg);
+  display:flex;
+  flex-direction:column;
+  padding:20px;
+  overflow-y:auto;
+  scrollbar-width:thin;
+  scrollbar-color:var(--ouro-escuro) transparent;
+}
+.verso-header{
+  text-align:center;
+  margin-bottom:14px;
+  padding-bottom:12px;
+  border-bottom:2px solid var(--ouro);
+}
+.verso-emoji{font-size:30px;margin-bottom:6px;}
+.verso-cat{font-family:var(--font-titulo);font-size:13px;font-weight:bold;color:var(--marrom-escuro);letter-spacing:1px;}
+.verso-nivel{font-size:10px;color:var(--marrom-claro);text-transform:uppercase;letter-spacing:2px;}
+.verso-pergunta{
+  font-family:var(--font-titulo);
+  font-size:14px;
+  color:var(--tinta);
+  line-height:1.6;
+  margin-bottom:16px;
+  text-align:center;
+  font-weight:bold;
+  background:rgba(62,39,35,0.05);
+  padding:12px;
+  border-radius:8px;
+  border-left:3px solid var(--ouro);
+}
+.opcoes-lista{list-style:none;display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+.opcao{
+  background:rgba(255,255,255,0.6);
+  border:2px solid rgba(139,110,80,0.25);
+  border-radius:8px;
+  padding:10px 14px;
+  cursor:pointer;
+  font-size:13px;
+  color:var(--tinta);
+  transition:all 0.2s;
+  position:relative;
+  overflow:hidden;
+  font-family:var(--font-texto);
+}
+.opcao:hover{background:rgba(201,168,76,0.1);border-color:var(--ouro);}
+.opcao.certa{background:rgba(76,175,80,0.15);border-color:#4CAF50;color:#2E7D32;}
+.opcao.errada{background:rgba(244,67,54,0.1);border-color:#F44336;color:#C62828;}
+.opcao.desabilitada{pointer-events:none;opacity:0.85;}
+.opcao::after{content:attr(data-feedback);position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:16px;}
+.resposta-box{
+  background:linear-gradient(135deg,rgba(76,175,80,0.1),rgba(201,168,76,0.08));
+  border:2px solid rgba(76,175,80,0.3);
+  border-radius:10px;
+  padding:14px;
+  margin-top:8px;
+  display:none;
+}
+.resposta-box.visivel{display:block;}
+.resposta-titulo{font-family:var(--font-titulo);font-size:12px;font-weight:bold;color:#2E7D32;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+.resposta-texto{font-size:12px;color:var(--tinta);line-height:1.6;}
+.resposta-link{display:inline-block;margin-top:8px;font-size:10px;color:var(--marrom-medio);word-break:break-all;}
+.resposta-link a{color:var(--ouro-escuro);text-decoration:none;border-bottom:1px dotted var(--ouro-escuro);}
+.btn-continuar{
+  margin-top:12px;
+  background:linear-gradient(135deg,var(--marrom-escuro),var(--marrom-medio));
+  color:var(--ouro);
+  border:2px solid var(--ouro);
+  padding:10px 20px;
+  border-radius:25px;
+  font-family:var(--font-titulo);
+  font-size:13px;
+  font-weight:bold;
+  cursor:pointer;
+  width:100%;
+  letter-spacing:1px;
+  transition:all 0.2s;
+  display:none;
+}
+.btn-continuar.visivel{display:block;}
+.btn-continuar:hover{background:var(--marrom-medio);}
+
+/* Carta Surpresa (verso) */
+.surpresa-verso{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:28px 20px;
+}
+.surpresa-emoji-g{font-size:60px;margin-bottom:14px;animation:spinSurpresa 0.8s ease-out;}
+@keyframes spinSurpresa{from{transform:rotate(-180deg) scale(0);}to{transform:rotate(0deg) scale(1);}}
+.surpresa-titulo{font-family:var(--font-titulo);font-size:22px;font-weight:bold;color:var(--marrom-escuro);margin-bottom:10px;}
+.surpresa-mensagem{font-size:14px;color:var(--tinta);line-height:1.7;margin-bottom:16px;background:rgba(62,39,35,0.06);padding:14px;border-radius:10px;}
+.surpresa-efeito{
+  font-family:var(--font-titulo);
+  font-size:15px;
+  font-weight:bold;
+  padding:10px 20px;
+  border-radius:25px;
+  margin-bottom:14px;
+}
+.surpresa-efeito.bonus{background:rgba(76,175,80,0.15);color:#2E7D32;border:2px solid #4CAF50;}
+.surpresa-efeito.penalidade{background:rgba(244,67,54,0.1);color:#C62828;border:2px solid #F44336;}
+.surpresa-efeito.prenda{background:rgba(156,39,176,0.1);color:#6A1B9A;border:2px solid #AB47BC;}
+
+/* ===== MODAL ESPECIAL (9 acertos) ===== */
+#modal-especial{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:2000;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,0.8);
+  backdrop-filter:blur(6px);
+}
+#modal-especial.aberto{display:flex;}
+.especial-box{
+  background:linear-gradient(160deg,var(--marrom-escuro),#1A0A04);
+  border:3px solid var(--ouro);
+  border-radius:20px;
+  padding:30px;
+  width:min(480px,92vw);
+  text-align:center;
+  box-shadow:0 30px 80px rgba(0,0,0,0.7),0 0 30px rgba(201,168,76,0.2);
+  animation:aparecer 0.5s ease-out;
+}
+@keyframes aparecer{from{transform:scale(0.5) rotate(-10deg);opacity:0;}to{transform:scale(1) rotate(0deg);opacity:1;}}
+.especial-titulo{font-family:var(--font-titulo);font-size:22px;font-weight:bold;color:var(--ouro);margin:10px 0;text-shadow:0 0 15px rgba(201,168,76,0.5);}
+.especial-sub{font-size:13px;color:rgba(201,168,76,0.7);margin-bottom:18px;}
+.especial-cartas{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:16px 0;}
+.esp-carta{
+  border-radius:10px;
+  padding:12px 6px;
+  cursor:pointer;
+  transition:all 0.2s;
+  text-align:center;
+  border:2px solid rgba(255,255,255,0.2);
+}
+.esp-carta:hover{transform:scale(1.06) translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,0.4);}
+.esp-carta-emoji{font-size:26px;}
+.esp-carta-label{font-size:9px;color:#fff;margin-top:4px;font-family:var(--font-titulo);}
+
+/* ===== FIM DE JOGO ===== */
+#modal-fim{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:3000;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,0.85);
+}
+#modal-fim.aberto{display:flex;}
+.fim-box{
+  background:linear-gradient(160deg,var(--marrom-escuro),#1A0A04);
+  border:3px solid var(--ouro);
+  border-radius:20px;
+  padding:30px;
+  width:min(440px,90vw);
+  text-align:center;
+  max-height:90vh;
+  overflow-y:auto;
+}
+.fim-trophy{font-size:60px;animation:trofeupulsar 1s ease-out;}
+@keyframes trofeupulsar{0%{transform:scale(0);}70%{transform:scale(1.2);}100%{transform:scale(1);}}
+.fim-titulo{font-family:var(--font-titulo);font-size:24px;color:var(--ouro);margin:10px 0;}
+.fim-podio{margin:16px 0;}
+.fim-jogador{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-radius:10px;margin:6px 0;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);}
+.fim-jog-info{font-family:var(--font-titulo);font-size:14px;color:var(--bege);}
+.fim-jog-pts{font-family:var(--font-titulo);font-size:16px;font-weight:bold;color:var(--ouro);}
+.fim-jog-1{background:linear-gradient(135deg,rgba(201,168,76,0.25),rgba(201,168,76,0.1));border-color:var(--ouro);}
+
+/* ===== NAV INFERIOR ===== */
+#nav-inferior{
+  position:fixed;
+  bottom:0;
+  left:0;
+  right:0;
+  background:linear-gradient(180deg,transparent,rgba(62,39,35,0.95));
+  padding:6px 8px 8px;
+  display:flex;
+  justify-content:center;
+  gap:4px;
+  z-index:500;
+}
+.nav-btn{
+  background:rgba(93,64,55,0.7);
+  border:1px solid rgba(201,168,76,0.3);
+  color:rgba(201,168,76,0.7);
+  padding:6px 10px;
+  border-radius:20px;
+  font-family:var(--font-titulo);
+  font-size:10px;
+  cursor:pointer;
+  transition:all 0.2s;
+  white-space:nowrap;
+  letter-spacing:0.5px;
+}
+.nav-btn:hover,.nav-btn.ativo{background:rgba(201,168,76,0.2);color:var(--ouro);border-color:var(--ouro);}
+
+/* ===== TOAST ===== */
+#toast{
+  position:fixed;
+  top:16px;
+  left:50%;
+  transform:translateX(-50%) translateY(-80px);
+  background:rgba(62,39,35,0.95);
+  color:var(--ouro);
+  border:1px solid var(--ouro);
+  padding:10px 20px;
+  border-radius:25px;
+  font-family:var(--font-titulo);
+  font-size:13px;
+  z-index:9999;
+  transition:transform 0.4s ease,opacity 0.4s;
+  opacity:0;
+  max-width:90vw;
+  text-align:center;
+  box-shadow:0 4px 20px rgba(0,0,0,0.4);
+}
+#toast.visivel{transform:translateX(-50%) translateY(0);opacity:1;}
+
+/* ===== OFFLINE BADGE ===== */
+#offline-badge{
+  position:fixed;
+  top:10px;
+  right:10px;
+  background:rgba(62,39,35,0.9);
+  border:1px solid rgba(201,168,76,0.4);
+  color:rgba(201,168,76,0.8);
+  padding:4px 10px;
+  border-radius:20px;
+  font-size:10px;
+  z-index:600;
+  letter-spacing:1px;
+}
+
+/* ===== RESPONSIVO ===== */
+@media(max-width:600px){
+  #lombada{display:none;}
+  .pg-scroll{padding:16px 14px;}
+  .carta-verso{padding:14px;}
+  .nivel-grid{grid-template-columns:repeat(3,1fr);}
+  .especial-cartas{grid-template-columns:repeat(2,1fr);}
+  .tab-grid{grid-template-columns:repeat(6,1fr);}
+  #nav-inferior{gap:2px;}
+  .nav-btn{font-size:9px;padding:5px 7px;}
+}
+
+/* ===== PÁGINAS ESPECÍFICAS ===== */
+.glossario-item{padding:10px 0;border-bottom:1px solid rgba(139,110,80,0.2);}
+.glossario-termo{font-family:var(--font-titulo);font-weight:bold;font-size:13px;color:var(--marrom-escuro);}
+.glossario-def{font-size:12px;color:var(--marrom-claro);margin-top:3px;line-height:1.5;}
+.glossario-busca{width:100%;padding:9px 14px;border:1px solid rgba(139,110,80,0.3);border-radius:20px;background:rgba(255,255,255,0.5);font-family:var(--font-texto);font-size:13px;color:var(--tinta);margin-bottom:12px;}
+
+.ranking-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;margin:6px 0;background:rgba(93,64,55,0.06);border:1px solid rgba(139,110,80,0.2);}
+.ranking-pos{font-family:var(--font-titulo);font-size:18px;font-weight:bold;color:var(--marrom-claro);width:28px;}
+.ranking-nome{flex:1;font-family:var(--font-titulo);font-size:13px;color:var(--marrom-escuro);}
+.ranking-pts{font-family:var(--font-titulo);font-size:14px;font-weight:bold;color:var(--ouro-escuro);}
+.trofeuzinho{font-size:16px;}
+
+.instrucoes-step{display:flex;gap:10px;padding:10px 0;border-bottom:1px solid rgba(139,110,80,0.15);}
+.step-num{width:28px;height:28px;background:var(--marrom-medio);color:var(--ouro);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-titulo);font-size:13px;font-weight:bold;flex-shrink:0;}
+.step-texto{font-size:12px;color:var(--tinta);line-height:1.6;}
+.step-titulo{font-family:var(--font-titulo);font-size:13px;font-weight:bold;color:var(--marrom-escuro);margin-bottom:2px;}
+.cat-legenda{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;}
+.cat-pill{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:10px;font-family:var(--font-titulo);font-weight:bold;}
+</style>
+</head>
+<body>
+
+<!-- OFFLINE BADGE -->
+<div id="offline-badge">📚 Offline OK</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- LIVRO PRINCIPAL -->
+<div id="app">
+  <div id="livro">
+    <div id="lombada">BiblioQuiz • Biblioteconomia</div>
+
+    <!-- ═══════ CAPA (Página 0) ═══════ -->
+    <div class="pagina ativa" id="pg-capa">
+      <div class="capa-emblema">📚</div>
+      <div class="capa-titulo">BiblioQuiz</div>
+      <div class="capa-subtitulo">O Jogo da Biblioteconomia</div>
+      <hr class="divisor" style="margin:8px 40px;border:none;height:1px;background:linear-gradient(90deg,transparent,var(--ouro),transparent);opacity:0.5;">
+      <div style="font-size:12px;color:rgba(201,168,76,0.6);letter-spacing:2px;margin:6px 0;">✦ ✦ ✦</div>
+      <div style="font-size:11px;color:rgba(201,168,76,0.5);font-style:italic;max-width:260px;text-align:center;line-height:1.7;">"A cada leitor seu livro, a cada livro seu leitor." — Ranganathan</div>
+      <div class="capa-btns">
+        <button class="btn-capa" onclick="irPara('pg-perfil')">👤 Meu Perfil</button>
+        <button class="btn-capa" onclick="irPara('pg-configurar')">🎮 Jogar</button>
+        <button class="btn-capa" onclick="irPara('pg-instrucoes')">📖 Instruções</button>
+      </div>
+      <div class="capa-autor">Biblioteconomia • Quiz Interativo • PWA Offline</div>
+      <span class="num-pagina dir">Capa</span>
+    </div>
+
+    <!-- ═══════ PERFIL (Página 1) ═══════ -->
+    <div class="pagina" id="pg-perfil">
+      <div class="pg-scroll">
+        <div class="ornamento">❧</div>
+        <div class="pg-titulo">Perfil Acadêmico</div>
+        <hr class="divisor">
+        <div class="perfil-avatar" id="avatarEmoji">🎓</div>
+        <div class="perfil-nome" id="nomeDisplay">Biblioteconômico(a)</div>
+        <div style="text-align:center;margin:4px 0;">
+          <span class="perfil-badge" id="badgeNivel">Graduação</span>
+          <span class="perfil-badge" style="background:rgba(93,64,55,0.15);" id="badgePts">0 pts</span>
+        </div>
+        <div class="perfil-stats">
+          <div class="stat-box"><div class="stat-num" id="statAcertos">0</div><div class="stat-label">Acertos</div></div>
+          <div class="stat-box"><div class="stat-num" id="statPartidas">0</div><div class="stat-label">Partidas</div></div>
+          <div class="stat-box"><div class="stat-num" id="statPts">0</div><div class="stat-label">Pontos</div></div>
+        </div>
+        <hr class="divisor">
+        <div style="font-family:var(--font-titulo);font-size:12px;color:var(--marrom-claro);margin:8px 0;">Personalizar perfil</div>
+        <input class="perfil-input" id="inputNome" placeholder="Seu nome..." value="" maxlength="40"/>
+        <select class="perfil-input" id="inputEmoji">
+          <option value="🎓">🎓 Formando</option>
+          <option value="📚">📚 Leitor(a)</option>
+          <option value="🦉">🦉 Sábio(a)</option>
+          <option value="🔬">🔬 Pesquisador(a)</option>
+          <option value="📋">📋 Catalogador(a)</option>
+          <option value="🌟">🌟 Destaque</option>
+          <option value="📜">📜 Arquivista</option>
+          <option value="🗂️">🗂️ Indexador(a)</option>
+        </select>
+        <button class="perfil-btn" onclick="salvarPerfil()">💾 Salvar Perfil</button>
+        <button class="perfil-btn" onclick="irPara('pg-capa')" style="background:transparent;color:var(--marrom-claro);border:1px solid rgba(139,110,80,0.3);">← Voltar</button>
+      </div>
+      <span class="num-pagina esq">p. 1</span>
+    </div>
+
+    <!-- ═══════ CONFIGURAR JOGO (Página 2) ═══════ -->
+    <div class="pagina" id="pg-configurar">
+      <div class="pg-scroll">
+        <div class="ornamento">⚜</div>
+        <div class="pg-titulo">Configurar Partida</div>
+        <hr class="divisor">
+
+        <div class="pg-subtitulo">Nível Acadêmico</div>
+        <div class="nivel-grid">
+          <div class="nivel-card ativo" onclick="selecionarNivel('graduacao',this)">
+            <div class="nivel-emoji">🎓</div>
+            <div class="nivel-nome">Graduação</div>
+            <div class="nivel-desc">Fundamentos</div>
+          </div>
+          <div class="nivel-card" onclick="selecionarNivel('mestrado',this)">
+            <div class="nivel-emoji">🔬</div>
+            <div class="nivel-nome">Mestrado</div>
+            <div class="nivel-desc">Avançado</div>
+          </div>
+          <div class="nivel-card" onclick="selecionarNivel('doutorado',this)">
+            <div class="nivel-emoji">🏛️</div>
+            <div class="nivel-nome">Doutorado</div>
+            <div class="nivel-desc">Expert</div>
+          </div>
+        </div>
+
+        <div class="pg-subtitulo">Dificuldade</div>
+        <div class="dif-grid">
+          <button class="dif-btn ativo" onclick="selecionarDif('medio',this)">⭐ Médio</button>
+          <button class="dif-btn" onclick="selecionarDif('dificil',this)">⭐⭐ Difícil</button>
+          <button class="dif-btn" onclick="selecionarDif('muito_dificil',this)">⭐⭐⭐ Muito Difícil</button>
+        </div>
+
+        <div class="pg-subtitulo">Número de Jogadores</div>
+        <div class="jogadores-grid">
+          <button class="jog-btn ativo" onclick="selecionarJog(1,this)">1 👤<br><small>vs CPU</small></button>
+          <button class="jog-btn" onclick="selecionarJog(2,this)">2 👥<br><small>local</small></button>
+          <button class="jog-btn" onclick="selecionarJog(3,this)">3 👥<br><small>local</small></button>
+          <button class="jog-btn" onclick="selecionarJog(4,this)">4 👥<br><small>local</small></button>
+        </div>
+
+        <div class="pg-subtitulo" id="label-nomes-jog" style="display:none">Nomes dos Jogadores</div>
+        <div id="inputs-nomes"></div>
+
+        <button class="btn-iniciar" onclick="iniciarJogo()">🎮 Iniciar Partida!</button>
+        <button class="perfil-btn" onclick="irPara('pg-capa')" style="display:block;margin:8px auto;background:transparent;color:var(--marrom-claro);border:1px solid rgba(139,110,80,0.3);">← Voltar</button>
+      </div>
+      <span class="num-pagina esq">p. 2</span>
+    </div>
+
+    <!-- ═══════ TABULEIRO (Página 3) ═══════ -->
+    <div class="pagina" id="pg-tabuleiro">
+      <div class="tab-topo">
+        <div class="tab-jogadores" id="jogadores-display"></div>
+        <div class="tab-info">
+          <div id="info-nivel-dif" style="font-size:10px;"></div>
+          <div id="info-rodada" style="font-size:10px;"></div>
+        </div>
+      </div>
+      <div class="acertos-streak" id="streak-dots"></div>
+      <div class="tab-grid-wrapper">
+        <div class="tab-grid" id="tabuleiro"></div>
+      </div>
+      <div class="dado-area">
+        <div class="dado" id="dado" onclick="rolarDado()">🎲</div>
+        <button class="btn-rolar" id="btn-rolar" onclick="rolarDado()">Rolar Dado</button>
+        <div style="text-align:center;">
+          <div class="progresso-info" id="progresso-info">9 acertos = carta especial!</div>
+        </div>
+      </div>
+      <span class="num-pagina esq">p. 3</span>
+    </div>
+
+    <!-- ═══════ GLOSSÁRIO (Página 4) ═══════ -->
+    <div class="pagina" id="pg-glossario">
+      <div class="pg-scroll">
+        <div class="ornamento">✦</div>
+        <div class="pg-titulo">Glossário Biblioteconômico</div>
+        <hr class="divisor">
+        <input class="glossario-busca" id="busca-glos" placeholder="🔍 Buscar termo..." oninput="filtrarGlossario(this.value)"/>
+        <div id="glossario-lista"></div>
+      </div>
+      <span class="num-pagina esq">p. 4</span>
+    </div>
+
+    <!-- ═══════ RANKING (Página 5) ═══════ -->
+    <div class="pagina" id="pg-ranking">
+      <div class="pg-scroll">
+        <div class="ornamento">🏆</div>
+        <div class="pg-titulo">Salão da Fama</div>
+        <hr class="divisor">
+        <div id="ranking-lista"></div>
+        <button class="perfil-btn" onclick="limparRanking()" style="margin-top:12px;background:transparent;color:#C62828;border:1px solid #C62828;display:block;margin:12px auto;">🗑️ Limpar Ranking</button>
+      </div>
+      <span class="num-pagina dir">p. 5</span>
+    </div>
+
+    <!-- ═══════ INSTRUÇÕES (Página 6) ═══════ -->
+    <div class="pagina" id="pg-instrucoes">
+      <div class="pg-scroll">
+        <div class="ornamento">📖</div>
+        <div class="pg-titulo">Como Jogar</div>
+        <hr class="divisor">
+
+        <div style="font-family:var(--font-titulo);font-size:11px;color:var(--marrom-claro);margin-bottom:8px;text-transform:uppercase;letter-spacing:2px;">Categorias de Cartas</div>
+        <div class="cat-legenda" id="cat-legenda"></div>
+        <hr class="divisor">
+        <div id="instrucoes-steps"></div>
+
+        <button class="perfil-btn" onclick="irPara('pg-capa')" style="display:block;margin:12px auto;background:transparent;color:var(--marrom-claro);border:1px solid rgba(139,110,80,0.3);">← Voltar</button>
+      </div>
+      <span class="num-pagina dir">p. 6</span>
+    </div>
+
+  </div><!-- /livro -->
+</div><!-- /app -->
+
+<!-- ═══════════════════ MODAL CARTA ═══════════════════ -->
+<div id="modal-carta" onclick="clicarFora(event)">
+  <div class="carta-container" onclick="event.stopPropagation()">
+    <div class="carta" id="carta-el">
+
+      <!-- FRENTE -->
+      <div class="carta-face carta-frente" id="carta-frente">
+        <div class="carta-emblema" id="cf-emoji"></div>
+        <div class="carta-nivel-badge" id="cf-nivel"></div>
+        <div class="carta-cat-label" id="cf-cat"></div>
+        <div class="carta-cat-desc" id="cf-desc"></div>
+        <div class="carta-hint">👆 Toque para revelar a pergunta</div>
+      </div>
+
+      <!-- VERSO — pergunta normal -->
+      <div class="carta-face carta-verso" id="carta-verso">
+        <div class="verso-header">
+          <div class="verso-emoji" id="cv-emoji"></div>
+          <div class="verso-cat" id="cv-cat"></div>
+          <div class="verso-nivel" id="cv-nivel"></div>
+        </div>
+        <div class="verso-pergunta" id="cv-pergunta"></div>
+        <ul class="opcoes-lista" id="cv-opcoes"></ul>
+        <div class="resposta-box" id="cv-resposta">
+          <div class="resposta-titulo">✅ Resposta Correta</div>
+          <div class="resposta-texto" id="cv-explicacao"></div>
+          <div class="resposta-link">📚 Referência: <a id="cv-ref-link" href="#" target="_blank" rel="noopener"></a></div>
+        </div>
+        <button class="btn-continuar" id="btn-continuar" onclick="fecharCarta()">Continuar →</button>
+      </div>
+
+      <!-- VERSO — carta surpresa -->
+      <div class="carta-face carta-verso surpresa-verso" id="carta-verso-surpresa" style="display:none;">
+        <div class="surpresa-emoji-g" id="cs-emoji"></div>
+        <div class="surpresa-titulo" id="cs-titulo"></div>
+        <div class="surpresa-mensagem" id="cs-mensagem"></div>
+        <div class="surpresa-efeito" id="cs-efeito"></div>
+        <button class="btn-continuar visivel" onclick="fecharSurpresa()" style="display:block;">Entendido! →</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ MODAL ESPECIAL (9 acertos) ═══════ -->
+<div id="modal-especial">
+  <div class="especial-box">
+    <div style="font-size:50px;animation:spinSurpresa 0.8s ease-out;">⭐</div>
+    <div class="especial-titulo">9 Acertos! Carta Especial!</div>
+    <div class="especial-sub">Escolha uma das cartas especiais abaixo:</div>
+    <div class="especial-cartas" id="especial-cartas-grid"></div>
+  </div>
+</div>
+
+<!-- ═══════ MODAL FIM DE JOGO ═══════ -->
+<div id="modal-fim">
+  <div class="fim-box">
+    <div class="fim-trophy">🏆</div>
+    <div class="fim-titulo">Partida Encerrada!</div>
+    <div class="fim-podio" id="fim-podio"></div>
+    <button class="btn-capa" onclick="novaPartida()" style="margin-top:16px;">🔄 Nova Partida</button>
+    <button class="btn-capa" onclick="irPara('pg-capa');fecharModais();" style="background:transparent;border:2px solid var(--ouro);color:var(--ouro);margin-top:8px;">🏠 Menu Principal</button>
+  </div>
+</div>
+
+<!-- NAV INFERIOR -->
+<div id="nav-inferior">
+  <button class="nav-btn ativo" onclick="irPara('pg-capa')">🏠 Capa</button>
+  <button class="nav-btn" onclick="irPara('pg-perfil')">👤 Perfil</button>
+  <button class="nav-btn" onclick="irPara('pg-configurar')">🎮 Jogar</button>
+  <button class="nav-btn" onclick="irPara('pg-tabuleiro')">🗺️ Tabuleiro</button>
+  <button class="nav-btn" onclick="irPara('pg-glossario')">📖 Glossário</button>
+  <button class="nav-btn" onclick="irPara('pg-ranking')">🏆 Ranking</button>
+</div>
+
+<script src="questions.js"></script>
+<script>
+// =====================================================================
+// BiblioQuiz — Engine Principal
+// =====================================================================
+
+/* ── Estado ── */
+let paginaAtual = 'pg-capa';
+let emTransicao = false;
+const PAGINAS_ORDEM = ['pg-capa','pg-perfil','pg-configurar','pg-tabuleiro','pg-glossario','pg-ranking','pg-instrucoes'];
+
+let cfg = {nivel:'graduacao', dificuldade:'medio', numJogadores:1, nomes:['Você','CPU','Jogador 3','Jogador 4']};
+let jogo = {
+  ativo:false, rodada:0,
+  jogadores:[], jogAtual:0,
+  acitosSeguidos:0, // acertos seguidos do jogador atual
+  cartaEscolhida:null,
+  questoesUsadas:new Set(),
+  casas:[]
+};
+
+/* ── Perfil salvo ── */
+let perfil = JSON.parse(localStorage.getItem('bq_perfil')||'{"nome":"Biblioteconômico(a)","emoji":"🎓","acertos":0,"partidas":0,"pts":0}');
+
+/* ── Sons (AudioContext Web API) ── */
+let AudioCtx;
+function getAudioCtx(){if(!AudioCtx)AudioCtx=new(window.AudioContext||window.webkitAudioContext)();return AudioCtx;}
+
+function somPagina(){
+  try{
+    const ctx=getAudioCtx();
+    const buf=ctx.createBuffer(1,ctx.sampleRate*0.4,ctx.sampleRate);
+    const data=buf.getChannelData(0);
+    for(let i=0;i<data.length;i++){
+      const t=i/ctx.sampleRate;
+      const env=Math.exp(-t*8);
+      data[i]=env*(Math.random()*2-1)*0.25*(1+Math.sin(2*Math.PI*800*t));
+    }
+    const src=ctx.createBufferSource();
+    src.buffer=buf;
+    const gain=ctx.createGain();
+    gain.gain.setValueAtTime(0.4,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.4);
+    src.connect(gain);gain.connect(ctx.destination);
+    src.start();
+  }catch(e){}
+}
+
+function somAcerto(){
+  try{
+    const ctx=getAudioCtx();
+    const freqs=[523,659,784,1047];
+    freqs.forEach((f,i)=>{
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.frequency.value=f;osc.type='sine';
+      gain.gain.setValueAtTime(0,ctx.currentTime+i*0.1);
+      gain.gain.linearRampToValueAtTime(0.15,ctx.currentTime+i*0.1+0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.1+0.3);
+      osc.connect(gain);gain.connect(ctx.destination);
+      osc.start(ctx.currentTime+i*0.1);
+      osc.stop(ctx.currentTime+i*0.1+0.3);
+    });
+  }catch(e){}
+}
+
+function somErro(){
+  try{
+    const ctx=getAudioCtx();
+    const osc=ctx.createOscillator();
+    const gain=ctx.createGain();
+    osc.frequency.setValueAtTime(200,ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(80,ctx.currentTime+0.3);
+    osc.type='sawtooth';
+    gain.gain.setValueAtTime(0.2,ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.3);
+    osc.connect(gain);gain.connect(ctx.destination);
+    osc.start();osc.stop(ctx.currentTime+0.3);
+  }catch(e){}
+}
+
+function somDado(){
+  try{
+    const ctx=getAudioCtx();
+    for(let i=0;i<6;i++){
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.frequency.value=200+Math.random()*300;
+      osc.type='square';
+      gain.gain.setValueAtTime(0.05,ctx.currentTime+i*0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.05+0.08);
+      osc.connect(gain);gain.connect(ctx.destination);
+      osc.start(ctx.currentTime+i*0.05);
+      osc.stop(ctx.currentTime+i*0.05+0.08);
+    }
+  }catch(e){}
+}
+
+function somEspecial(){
+  try{
+    const ctx=getAudioCtx();
+    [523,659,784,1047,1319,1568].forEach((f,i)=>{
+      const osc=ctx.createOscillator();
+      const gain=ctx.createGain();
+      osc.frequency.value=f;osc.type='sine';
+      gain.gain.setValueAtTime(0.15,ctx.currentTime+i*0.08);
+      gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.08+0.4);
+      osc.connect(gain);gain.connect(ctx.destination);
+      osc.start(ctx.currentTime+i*0.08);
+      osc.stop(ctx.currentTime+i*0.08+0.4);
+    });
+  }catch(e){}
+}
+
+/* ── Navegação com efeito de livro ── */
+function irPara(id){
+  if(emTransicao||id===paginaAtual)return;
+  emTransicao=true;
+  somPagina();
+
+  const anterior=document.getElementById(paginaAtual);
+  const proximo=document.getElementById(id);
+  if(!proximo){emTransicao=false;return;}
+
+  anterior.classList.add('saindo');
+  proximo.classList.add('entrando');
+  proximo.style.opacity='0';
+
+  setTimeout(()=>{
+    anterior.classList.remove('ativa','saindo');
+    anterior.style.opacity='';
+    proximo.classList.remove('entrando');
+    proximo.classList.add('ativa');
+    proximo.style.opacity='';
+    paginaAtual=id;
+    emTransicao=false;
+    atualizarNav();
+    onPaginaAtivada(id);
+  },700);
+}
+
+function atualizarNav(){
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('ativo'));
+  const mapa={'pg-capa':0,'pg-perfil':1,'pg-configurar':2,'pg-tabuleiro':3,'pg-glossario':4,'pg-ranking':5};
+  const idx=mapa[paginaAtual];
+  if(idx!==undefined)document.querySelectorAll('.nav-btn')[idx]?.classList.add('ativo');
+}
+
+function onPaginaAtivada(id){
+  if(id==='pg-perfil')carregarPerfil();
+  if(id==='pg-glossario')renderGlossario();
+  if(id==='pg-ranking')renderRanking();
+  if(id==='pg-instrucoes')renderInstrucoes();
+}
+
+/* ── Perfil ── */
+function carregarPerfil(){
+  document.getElementById('nomeDisplay').textContent=perfil.nome;
+  document.getElementById('avatarEmoji').textContent=perfil.emoji;
+  document.getElementById('inputNome').value=perfil.nome;
+  document.getElementById('inputEmoji').value=perfil.emoji;
+  document.getElementById('badgeNivel').textContent=cfg.nivel.charAt(0).toUpperCase()+cfg.nivel.slice(1);
+  document.getElementById('badgePts').textContent=perfil.pts+' pts';
+  document.getElementById('statAcertos').textContent=perfil.acertos;
+  document.getElementById('statPartidas').textContent=perfil.partidas;
+  document.getElementById('statPts').textContent=perfil.pts;
+}
+
+function salvarPerfil(){
+  perfil.nome=document.getElementById('inputNome').value||'Biblioteconômico(a)';
+  perfil.emoji=document.getElementById('inputEmoji').value;
+  localStorage.setItem('bq_perfil',JSON.stringify(perfil));
+  carregarPerfil();
+  mostrarToast('✅ Perfil salvo!');
+}
+
+/* ── Configuração ── */
+function selecionarNivel(nivel,el){
+  cfg.nivel=nivel;
+  document.querySelectorAll('.nivel-card').forEach(c=>c.classList.remove('ativo'));
+  el.classList.add('ativo');
+}
+function selecionarDif(dif,el){
+  cfg.dificuldade=dif;
+  document.querySelectorAll('.dif-btn').forEach(b=>b.classList.remove('ativo'));
+  el.classList.add('ativo');
+}
+function selecionarJog(n,el){
+  cfg.numJogadores=n;
+  document.querySelectorAll('.jog-btn').forEach(b=>b.classList.remove('ativo'));
+  el.classList.add('ativo');
+  renderInputsNomes(n);
+}
+
+function renderInputsNomes(n){
+  const c=document.getElementById('inputs-nomes');
+  const lbl=document.getElementById('label-nomes-jog');
+  if(n<=1){c.innerHTML='';lbl.style.display='none';return;}
+  lbl.style.display='block';
+  c.innerHTML=Array.from({length:n},(_,i)=>`<input class="perfil-input" id="nome-jog-${i}" placeholder="Jogador ${i+1}" value="${cfg.nomes[i]||'Jogador '+(i+1)}"/>`).join('');
+}
+
+/* ── Construir Tabuleiro ── */
+function construirCasas(){
+  const cats=Object.keys(QUESTIONS);
+  const casas=[];
+  for(let i=0;i<48;i++){
+    const surpresa=i>0&&i%8===0; // casa 8,16,24,32,40 = surpresa
+    const cat=surpresa?'surpresa':cats[i%cats.length];
+    const q=QUESTIONS[cat];
+    casas.push({
+      id:i,
+      tipo:surpresa?'surpresa':'normal',
+      cat:surpresa?'surpresa':cat,
+      cor:surpresa?'#FFFFFF':q.cor,
+      corFonte:surpresa?'#333':q.corFonte,
+      emoji:surpresa?'⚪':q.emoji,
+      label:surpresa?'Surpresa':(q?q.label:'?')
+    });
+  }
+  return casas;
+}
+
+/* ── Iniciar Jogo ── */
+function iniciarJogo(){
+  const n=cfg.numJogadores;
+  const jogPiones=['🔴','🔵','🟢','🟡'];
+  const jogNomes=n===1?[perfil.nome,'💻 CPU']:
+    Array.from({length:n},(_,i)=>{
+      const el=document.getElementById('nome-jog-'+i);
+      return el?el.value||('Jogador '+(i+1)):'Jogador '+(i+1);
+    });
+
+  jogo.jogadores=Array.from({length:n===1?2:n},(_,i)=>({
+    id:i,nome:jogNomes[i]||'Jogador '+(i+1),
+    piao:jogPiones[i],pos:0,pts:0,
+    isCPU:n===1&&i===1
+  }));
+  jogo.jogAtual=0;
+  jogo.rodada=1;
+  jogo.acitosSeguidos=0;
+  jogo.questoesUsadas=new Set();
+  jogo.casas=construirCasas();
+  jogo.ativo=true;
+
+  renderTabuleiro();
+  irPara('pg-tabuleiro');
+}
+
+function renderTabuleiro(){
+  const grid=document.getElementById('tabuleiro');
+  grid.innerHTML='';
+  jogo.casas.forEach((casa,i)=>{
+    const div=document.createElement('div');
+    div.className='casa'+(casa.tipo==='surpresa'?' surpresa':'');
+    div.style.background=casa.cor;
+    div.style.color=casa.corFonte;
+    div.dataset.idx=i;
+    div.title=casa.label;
+
+    div.innerHTML=`<span class="casa-num">${i+1}</span><span class="casa-emoji">${casa.emoji}</span><span class="casa-label">${casa.label.substring(0,10)}</span>`;
+
+    // Pions dos jogadores
+    jogo.jogadores.forEach(j=>{
+      if(j.pos===i){
+        const p=document.createElement('span');
+        p.className='piao';p.textContent=j.piao;
+        div.appendChild(p);
+      }
+    });
+    grid.appendChild(div);
+  });
+
+  // Jogadores display
+  const jd=document.getElementById('jogadores-display');
+  jd.innerHTML=jogo.jogadores.map((j,i)=>`<div class="jog-indicador${i===jogo.jogAtual?' atual':''}" style="background:${i===jogo.jogAtual?'rgba(201,168,76,0.2)':'rgba(93,64,55,0.15)'};border-color:${i===jogo.jogAtual?'var(--ouro)':'transparent'}">${j.piao} ${j.nome.split(' ')[0]}<br><b>${j.pts}pts</b></div>`).join('');
+
+  // Streak dots
+  renderStreakDots();
+
+  // Info
+  const nivLbl={'graduacao':'Graduação','mestrado':'Mestrado','doutorado':'Doutorado'};
+  const difLbl={'medio':'Médio','dificil':'Difícil','muito_dificil':'Muito Difícil'};
+  document.getElementById('info-nivel-dif').textContent=`${nivLbl[cfg.nivel]} • ${difLbl[cfg.dificuldade]}`;
+  document.getElementById('info-rodada').textContent=`Rodada ${jogo.rodada} • Vez de ${jogo.jogadores[jogo.jogAtual].nome}`;
+  document.getElementById('btn-rolar').disabled=false;
+  document.getElementById('btn-rolar').textContent=`🎲 ${jogo.jogadores[jogo.jogAtual].nome} — Rolar`;
+
+  // CPU move automatically
+  if(jogo.jogadores[jogo.jogAtual].isCPU){
+    setTimeout(()=>rolarDado(),1200);
+  }
+}
+
+function renderStreakDots(){
+  const cont=document.getElementById('streak-dots');
+  cont.innerHTML='';
+  for(let i=0;i<9;i++){
+    const d=document.createElement('div');
+    d.className='streak-dot'+(i<jogo.acitosSeguidos?' certo':'');
+    cont.appendChild(d);
+  }
+}
+
+/* ── Dado ── */
+function rolarDado(){
+  if(!jogo.ativo)return;
+  const btn=document.getElementById('btn-rolar');
+  if(btn.disabled)return;
+  btn.disabled=true;
+
+  const dado=document.getElementById('dado');
+  dado.classList.add('rolando');
+  somDado();
+
+  const faces=['⚀','⚁','⚂','⚃','⚄','⚅'];
+  let cont=0;
+  const intervalo=setInterval(()=>{
+    dado.textContent=faces[Math.floor(Math.random()*6)];
+    cont++;
+    if(cont>=12){
+      clearInterval(intervalo);
+      dado.classList.remove('rolando');
+      const valor=Math.floor(Math.random()*6)+1;
+      dado.textContent=faces[valor-1];
+      moverJogador(valor);
+    }
+  },60);
+}
+
+function moverJogador(passos){
+  const j=jogo.jogadores[jogo.jogAtual];
+  const antiga=j.pos;
+  j.pos=Math.min(j.pos+passos,47);
+
+  // Animar movimento
+  let atual=antiga;
+  const mover=setInterval(()=>{
+    if(atual<j.pos){
+      atual++;
+      j.pos=atual;
+      renderTabuleiro();
+    } else {
+      clearInterval(mover);
+      setTimeout(()=>chegarNaCasa(j),300);
+    }
+  },120);
+}
+
+function chegarNaCasa(j){
+  const casa=jogo.casas[j.pos];
+  if(casa.tipo==='surpresa'){
+    abrirCartaSurpresa();
+  } else {
+    abrirCarta(casa);
+  }
+
+  // Vitória
+  if(j.pos>=47){
+    setTimeout(()=>encerrarJogo(),2000);
+  }
+}
+
+/* ── Abrir carta normal ── */
+function abrirCarta(casa){
+  const q=sortearQuestao(casa.cat);
+  if(!q){mostrarToast('Todas as perguntas desta categoria foram usadas!');proximoJogador();return;}
+
+  jogo.cartaEscolhida={casa,q,respondida:false,correta:false};
+
+  // Frente
+  document.getElementById('cf-emoji').textContent=QUESTIONS[casa.cat].emoji;
+  document.getElementById('cf-cat').textContent=QUESTIONS[casa.cat].label;
+  document.getElementById('cf-desc').textContent=QUESTIONS[casa.cat].descricao;
+  document.getElementById('cf-nivel').textContent=`${cfg.nivel.toUpperCase()} • ${cfg.dificuldade.replace('_',' ').toUpperCase()}`;
+  document.getElementById('carta-frente').style.background=casa.cor;
+
+  // Verso
+  document.getElementById('cv-emoji').textContent=QUESTIONS[casa.cat].emoji;
+  document.getElementById('cv-cat').textContent=QUESTIONS[casa.cat].label;
+  document.getElementById('cv-nivel').textContent=`${cfg.nivel} • ${cfg.dificuldade}`;
+  document.getElementById('cv-pergunta').textContent=q.pergunta;
+  document.getElementById('cv-resposta').classList.remove('visivel');
+  document.getElementById('btn-continuar').classList.remove('visivel');
+
+  // Opcoes
+  const lista=document.getElementById('cv-opcoes');
+  lista.innerHTML='';
+  q.opcoes.forEach((op,i)=>{
+    const li=document.createElement('li');
+    li.className='opcao';
+    li.textContent=op;
+    li.dataset.idx=i;
+    li.onclick=()=>responder(i,q,li);
+    lista.appendChild(li);
+  });
+
+  document.getElementById('carta-verso-surpresa').style.display='none';
+  document.getElementById('carta-verso').style.display='flex';
+  document.getElementById('carta-el').classList.remove('virada');
+  document.getElementById('modal-carta').classList.add('aberto');
+
+  // Auto-virar frente após breve delay
+  setTimeout(()=>document.getElementById('carta-el').classList.add('virada'),500);
+}
+
+function sortearQuestao(cat){
+  const banco=QUESTIONS[cat]?.niveis?.[cfg.nivel]?.[cfg.dificuldade];
+  if(!banco||!banco.length)return null;
+  const disponiveis=banco.filter(q=>!jogo.questoesUsadas.has(q.id));
+  if(!disponiveis.length){
+    // Reiniciar usadas desta categoria
+    banco.forEach(q=>jogo.questoesUsadas.delete(q.id));
+    return banco[Math.floor(Math.random()*banco.length)];
+  }
+  const q=disponiveis[Math.floor(Math.random()*disponiveis.length)];
+  jogo.questoesUsadas.add(q.id);
+  return q;
+}
+
+function responder(idx,q,el){
+  if(jogo.cartaEscolhida.respondida)return;
+  jogo.cartaEscolhida.respondida=true;
+
+  const opcoes=document.querySelectorAll('.opcao');
+  opcoes.forEach(o=>o.classList.add('desabilitada'));
+
+  const certo=idx===q.correta;
+  el.classList.add(certo?'certa':'errada');
+  el.dataset.feedback=certo?'✅':'❌';
+  opcoes[q.correta].classList.add('certa');
+  opcoes[q.correta].dataset.feedback='✅';
+
+  if(certo){
+    somAcerto();
+    jogo.jogadores[jogo.jogAtual].pts+=10;
+    perfil.acertos++;
+    perfil.pts+=10;
+    jogo.acitosSeguidos++;
+
+    if(jogo.acitosSeguidos>=9){
+      jogo.acitosSeguidos=0;
+      setTimeout(()=>{
+        fecharCarta();
+        abrirModalEspecial();
+      },1800);
+    }
+  } else {
+    somErro();
+    jogo.acitosSeguidos=0;
+  }
+
+  // Mostrar resposta
+  document.getElementById('cv-explicacao').textContent=q.explicacao;
+  const link=document.getElementById('cv-ref-link');
+  const urlMatch=q.referencia.match(/https?:\/\/[^\s]+/);
+  if(urlMatch){
+    link.href=urlMatch[0];link.textContent=urlMatch[0];link.parentElement.style.display='';
+  } else {
+    link.parentElement.style.display='none';
+  }
+  document.getElementById('cv-resposta').classList.add('visivel');
+  document.getElementById('btn-continuar').classList.add('visivel');
+
+  renderStreakDots();
+  localStorage.setItem('bq_perfil',JSON.stringify(perfil));
+}
+
+function fecharCarta(){
+  document.getElementById('modal-carta').classList.remove('aberto');
+  document.getElementById('carta-el').classList.remove('virada');
+  if(jogo.acitosSeguidos<9)proximoJogador();
+}
+
+function fecharSurpresa(){
+  document.getElementById('modal-carta').classList.remove('aberto');
+  document.getElementById('carta-el').classList.remove('virada');
+  aplicarEfeitoSurpresa();
+  proximoJogador();
+}
+
+function clicarFora(e){
+  if(e.target===document.getElementById('modal-carta')){
+    // Não fechar ao clicar fora durante quiz ativo
+  }
+}
+
+/* ── Carta Surpresa ── */
+function abrirCartaSurpresa(){
+  const s=CARTAS_SURPRESA[Math.floor(Math.random()*CARTAS_SURPRESA.length)];
+  jogo.cartaEscolhida={surpresa:s};
+
+  document.getElementById('carta-frente').style.background='#3E2723';
+  document.getElementById('cf-emoji').textContent='⭐';
+  document.getElementById('cf-cat').textContent='CARTA SURPRESA';
+  document.getElementById('cf-desc').textContent='Algo inesperado aguarda...';
+  document.getElementById('cf-nivel').textContent='SURPRESA';
+
+  document.getElementById('carta-verso').style.display='none';
+  const sv=document.getElementById('carta-verso-surpresa');
+  sv.style.display='flex';
+  document.getElementById('cs-emoji').textContent=s.emoji;
+  document.getElementById('cs-titulo').textContent=s.titulo;
+  document.getElementById('cs-mensagem').textContent=s.mensagem;
+  const efDiv=document.getElementById('cs-efeito');
+  efDiv.textContent=s.efeito;
+  efDiv.className='surpresa-efeito '+s.tipo;
+
+  document.getElementById('carta-el').classList.remove('virada');
+  document.getElementById('modal-carta').classList.add('aberto');
+  setTimeout(()=>document.getElementById('carta-el').classList.add('virada'),500);
+}
+
+function aplicarEfeitoSurpresa(){
+  const s=jogo.cartaEscolhida?.surpresa;
+  if(!s)return;
+  const j=jogo.jogadores[jogo.jogAtual];
+  if(s.pontos!==0){
+    j.pts=Math.max(0,j.pts+s.pontos);
+    perfil.pts=Math.max(0,perfil.pts+s.pontos);
+    mostrarToast(s.pontos>0?`+${s.pontos} pontos! ${s.emoji}`:`${s.pontos} pontos! ${s.emoji}`);
+  }
+}
+
+/* ── Modal Especial (9 acertos) ── */
+function abrirModalEspecial(){
+  somEspecial();
+  const grid=document.getElementById('especial-cartas-grid');
+  const cats=Object.keys(QUESTIONS);
+  // Mostrar 4 categorias aleatórias + surpresa
+  const selecionadas=cats.sort(()=>Math.random()-0.5).slice(0,3).concat(['surpresa']);
+  grid.innerHTML=selecionadas.map(cat=>{
+    const q=cat==='surpresa'?{label:'Surpresa',emoji:'⭐',cor:'#3E2723'}:QUESTIONS[cat];
+    return `<div class="esp-carta" style="background:${q.cor}" onclick="escolherCartaEspecial('${cat}')">
+      <div class="esp-carta-emoji">${q.emoji}</div>
+      <div class="esp-carta-label">${q.label}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('modal-especial').classList.add('aberto');
+}
+
+function escolherCartaEspecial(cat){
+  document.getElementById('modal-especial').classList.remove('aberto');
+  if(cat==='surpresa'){
+    abrirCartaSurpresa();
+  } else {
+    abrirCarta({cat,cor:QUESTIONS[cat].cor,corFonte:QUESTIONS[cat].corFonte,emoji:QUESTIONS[cat].emoji,label:QUESTIONS[cat].label,tipo:'normal'});
+  }
+}
+
+/* ── Próximo jogador ── */
+function proximoJogador(){
+  jogo.jogAtual=(jogo.jogAtual+1)%jogo.jogadores.length;
+  if(jogo.jogAtual===0)jogo.rodada++;
+  renderTabuleiro();
+}
+
+/* ── Encerrar jogo ── */
+function encerrarJogo(){
+  jogo.ativo=false;
+  perfil.partidas++;
+  localStorage.setItem('bq_perfil',JSON.stringify(perfil));
+
+  // Salvar no ranking
+  const rank=JSON.parse(localStorage.getItem('bq_ranking')||'[]');
+  jogo.jogadores.forEach(j=>{if(!j.isCPU)rank.push({nome:j.nome,pts:j.pts,data:new Date().toLocaleDateString('pt-BR'),nivel:cfg.nivel});});
+  rank.sort((a,b)=>b.pts-a.pts);
+  localStorage.setItem('bq_ranking',JSON.stringify(rank.slice(0,20)));
+
+  // Ordenar por pts
+  const ord=[...jogo.jogadores].sort((a,b)=>b.pts-a.pts);
+  const podio=document.getElementById('fim-podio');
+  podio.innerHTML=ord.map((j,i)=>`<div class="fim-jogador${i===0?' fim-jog-1':''}">
+    <span class="trofeuzinho">${['🥇','🥈','🥉','4️⃣'][i]}</span>
+    <span class="fim-jog-info">${j.piao} ${j.nome}</span>
+    <span class="fim-jog-pts">${j.pts} pts</span>
+  </div>`).join('');
+
+  document.getElementById('modal-fim').classList.add('aberto');
+  somEspecial();
+}
+
+function novaPartida(){
+  document.getElementById('modal-fim').classList.remove('aberto');
+  irPara('pg-configurar');
+}
+
+function fecharModais(){
+  document.getElementById('modal-fim').classList.remove('aberto');
+  document.getElementById('modal-carta').classList.remove('aberto');
+  document.getElementById('modal-especial').classList.remove('aberto');
+}
+
+/* ── Glossário ── */
+const GLOSSARIO=[
+  {t:"ABNT",d:"Associação Brasileira de Normas Técnicas. Organismo responsável pela normalização técnica no Brasil."},
+  {t:"Acesso Aberto",d:"Disponibilização gratuita e irrestrita de publicações científicas na internet."},
+  {t:"Autoridade",d:"Arquivo ou lista de formas autorizadas de nomes, títulos e termos usados em catálogos."},
+  {t:"Bibliometria",d:"Aplicação de métodos matemáticos e estatísticos à produção e uso de documentos."},
+  {t:"BIBFRAME",d:"Bibliographic Framework Initiative. Modelo de dados baseado em RDF desenvolvido pela Library of Congress para substituir o MARC 21."},
+  {t:"Catalogação",d:"Processo de descrição e representação formal de documentos para inclusão no catálogo."},
+  {t:"CDD",d:"Classificação Decimal de Dewey. Sistema de classificação bibliográfica criado por Melvil Dewey em 1876."},
+  {t:"CDU",d:"Classificação Decimal Universal. Sistema analítico-sintético criado por Otlet e La Fontaine com base na CDD."},
+  {t:"Competência Informacional",d:"Information literacy. Capacidade de reconhecer, localizar, avaliar e usar informação de forma eficaz e ética."},
+  {t:"Desbaste",d:"Weeding. Processo de remoção seletiva de materiais desatualizados ou danificados do acervo."},
+  {t:"Descritor",d:"Termo controlado selecionado para representar um conceito em sistemas de indexação."},
+  {t:"DOI",d:"Digital Object Identifier. Identificador persistente e único para documentos digitais."},
+  {t:"EEB",d:"Empréstimo Entre Bibliotecas. Serviço cooperativo que permite obter documentos de outra instituição."},
+  {t:"FRBR",d:"Functional Requirements for Bibliographic Records. Modelo conceitual da IFLA que organiza entidades bibliográficas em grupos."},
+  {t:"IFLA",d:"International Federation of Library Associations and Institutions. Principal organização internacional da Biblioteconomia."},
+  {t:"Indexação",d:"Análise de conteúdo de documentos e atribuição de termos para representar seus temas."},
+  {t:"ISBN",d:"International Standard Book Number. Identificador numérico único para livros."},
+  {t:"ISBD",d:"International Standard Bibliographic Description. Padrão internacional para descrição bibliográfica."},
+  {t:"ISSN",d:"International Standard Serial Number. Identificador para publicações seriadas."},
+  {t:"Linked Data",d:"Dados publicados na Web de forma estruturada e interligada, seguindo padrões RDF."},
+  {t:"MARC 21",d:"Machine-Readable Cataloging. Formato padrão de metadados bibliográficos legíveis por máquina."},
+  {t:"Metadados",d:"Dados sobre dados. Informações estruturadas que descrevem, explicam ou localizam outros recursos."},
+  {t:"OAI-PMH",d:"Open Archives Initiative Protocol for Metadata Harvesting. Protocolo para coleta de metadados entre repositórios."},
+  {t:"Ontologia",d:"Representação formal de conceitos e relações em um domínio de conhecimento."},
+  {t:"Pergaminho",d:"Suporte de escrita feito de pele animal, precursor do livro em codex."},
+  {t:"Política de Coleção",d:"Documento que orienta a seleção, aquisição, manutenção e desbaste do acervo."},
+  {t:"Preservação Digital",d:"Conjunto de atividades para garantir acesso contínuo a materiais digitais ao longo do tempo."},
+  {t:"RDA",d:"Resource Description and Access. Código de catalogação baseado no FRBR, sucessor do AACR2."},
+  {t:"RDF",d:"Resource Description Framework. Linguagem padrão da Web Semântica para representar dados como triplas."},
+  {t:"Repositório Institucional",d:"Sistema digital que gerencia e preserva a produção intelectual de uma instituição."},
+  {t:"Serviço de Referência",d:"Serviço que auxilia o usuário na identificação, localização e uso da informação."},
+  {t:"Tesauro",d:"Linguagem documentária estruturada com relações hierárquicas, associativas e de equivalência."},
+  {t:"VIAF",d:"Virtual International Authority File. Arquivo virtual que agrega dados de autoridade de bibliotecas nacionais."},
+  {t:"Vocabulário Controlado",d:"Conjunto padronizado de termos para indexação, garantindo consistência na recuperação."},
+  {t:"Z39.50",d:"Protocolo padrão para busca e recuperação de informação entre sistemas de bibliotecas heterogêneos."},
+];
+
+function renderGlossario(filtro=''){
+  const lista=document.getElementById('glossario-lista');
+  const fil=GLOSSARIO.filter(g=>!filtro||g.t.toLowerCase().includes(filtro.toLowerCase())||g.d.toLowerCase().includes(filtro.toLowerCase()));
+  lista.innerHTML=fil.length?fil.map(g=>`<div class="glossario-item"><div class="glossario-termo">${g.t}</div><div class="glossario-def">${g.d}</div></div>`).join(''):'<div style="text-align:center;color:var(--marrom-claro);padding:20px;">Nenhum termo encontrado.</div>';
+}
+function filtrarGlossario(v){renderGlossario(v);}
+
+/* ── Ranking ── */
+function renderRanking(){
+  const rank=JSON.parse(localStorage.getItem('bq_ranking')||'[]');
+  const lista=document.getElementById('ranking-lista');
+  if(!rank.length){lista.innerHTML='<div style="text-align:center;color:var(--marrom-claro);padding:30px;font-style:italic;">Nenhuma partida registrada ainda.<br>Jogue e apareça aqui!</div>';return;}
+  lista.innerHTML=rank.map((r,i)=>`<div class="ranking-item">
+    <div class="ranking-pos">${['🥇','🥈','🥉'][i]||i+1}</div>
+    <div class="ranking-nome">${r.nome}<br><small style="color:var(--marrom-claro);font-size:10px;">${r.nivel} • ${r.data}</small></div>
+    <div class="ranking-pts">${r.pts} pts</div>
+  </div>`).join('');
+}
+function limparRanking(){if(confirm('Limpar todo o ranking?')){localStorage.removeItem('bq_ranking');renderRanking();mostrarToast('Ranking limpo.');}}
+
+/* ── Instruções ── */
+function renderInstrucoes(){
+  // Legenda categorias
+  const leg=document.getElementById('cat-legenda');
+  leg.innerHTML=Object.values(QUESTIONS).map(q=>`<div class="cat-pill" style="background:${q.cor};color:${q.corFonte}">${q.emoji} ${q.label}</div>`).join('')+`<div class="cat-pill" style="background:#3E2723;color:var(--ouro)">⭐ Surpresa</div>`;
+
+  // Passos
+  const steps=[
+    {t:"Configure a Partida",txt:"Escolha o nível (Graduação, Mestrado, Doutorado), a dificuldade (Médio, Difícil, Muito Difícil) e o número de jogadores (1-4)."},
+    {t:"Role o Dado",txt:"Cada jogador rola o dado e avança no tabuleiro. Cada casa tem uma categoria e cor correspondente."},
+    {t:"Escolha a Carta",txt:"Ao cair em uma casa, uma carta da categoria correspondente é sorteada. Clique para revelar a pergunta."},
+    {t:"Responda a Pergunta",txt:"Escolha a opção correta (A, B, C, D ou E). O verso da carta sempre mostra a resposta correta com explicação e referência bibliográfica."},
+    {t:"Acumule Pontos",txt:"Cada resposta correta vale 10 pontos. A cada 9 acertos seguidos, ganhe uma carta especial!"},
+    {t:"Cartas Surpresa ⭐",txt:"Casas brancas (numeradas 9, 17, 25, 33, 41) são surpresa! Podem dar bônus, penalidade ou prenda biblioteconômica."},
+    {t:"Carta Especial (9 acertos!)",txt:"Ao acertar 9 respostas seguidas, escolha entre 4 categorias de cartas especiais para um bônus extra."},
+    {t:"Fim do Jogo",txt:"Quem completar o percurso (casa 48) ou tiver mais pontos ao final das rodadas vence e entra no Salão da Fama!"},
+    {t:"Offline & Online",txt:"O BiblioQuiz funciona completamente offline após o primeiro acesso. Todos os dados são salvos localmente no seu dispositivo."},
+  ];
+  document.getElementById('instrucoes-steps').innerHTML=steps.map((s,i)=>`<div class="instrucoes-step"><div class="step-num">${i+1}</div><div><div class="step-titulo">${s.t}</div><div class="step-texto">${s.txt}</div></div></div>`).join('');
+}
+
+/* ── Toast ── */
+function mostrarToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.classList.add('visivel');
+  setTimeout(()=>t.classList.remove('visivel'),2800);
+}
+
+/* ── Offline detection ── */
+function atualizarOffline(){
+  const b=document.getElementById('offline-badge');
+  b.textContent=navigator.onLine?'🌐 Online':'📱 Offline — OK';
+  b.style.borderColor=navigator.onLine?'rgba(76,175,80,0.4)':'rgba(201,168,76,0.4)';
+}
+window.addEventListener('online',atualizarOffline);
+window.addEventListener('offline',atualizarOffline);
+atualizarOffline();
+
+/* ── Service Worker ── */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').then(()=>{}).catch(()=>{});
+}
+
+/* ── Init ── */
+(function init(){
+  carregarPerfil();
+  renderGlossario();
+  renderInstrucoes();
+  mostrarToast('📚 Bem-vindo ao BiblioQuiz!');
+  setTimeout(()=>mostrarToast('"A cada leitor seu livro." — Ranganathan'),3500);
+})();
+</script>
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js/v833ccba57c9e4d2798f2e76cebdd09a11778172276447" integrity="sha512-57MDmcccJXYtNnH+ZiBwzC4jb2rvgVCEokYN+L/nLlmO8rfYT/gIpW2A569iJ/3b+0UEasghjuZH/ma3wIs/EQ==" data-cf-beacon='{"version":"2024.11.0","token":"1954b47c125f43f8b4338b3c4f804e4f","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
+</body>
+</html>
